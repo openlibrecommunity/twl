@@ -1,8 +1,11 @@
 #!/bin/bash
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+BASE_DIR="$(dirname "$SCRIPT_DIR")"
+
 IFACE="wlan0"
-RANGES="ruranges_v4.txt"
-OUTPUT="whitelist_ips.txt"
+RANGES="$BASE_DIR/data/ruranges_v4.txt"
+OUTPUT="$BASE_DIR/out/whitelist_ips.txt"
 RATE=10000
 
 if [ ! -f "$RANGES" ]; then
