@@ -1,7 +1,7 @@
 #!/bin/bash
 
 IFACE="wlan0"
-RANGES="ruranges.txt"
+RANGES="ruranges_v4.txt"
 OUTPUT="whitelist_ips.txt"
 RATE=10000
 
