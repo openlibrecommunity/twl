@@ -28,15 +28,6 @@ interfaces:
 - Статус: белые списки
 - Тип: мобильный интернет с ограничениями
 
-## Что проверено
-
-```bash
-curl --socks5-hostname 127.0.0.1:8888 icanhazip.com  # 213.176.65.28
-curl icanhazip.com                                    # домашний IP
-curl --interface wlan0 icanhazip.com                  # не работает
-curl --interface wlan0 ya.ru                          # работает (белый список)
-```
-
 ## TODO
 
 - [ ] Снять полный список что работает/не работает на wlan0
