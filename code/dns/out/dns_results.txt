@@ -1,0 +1,31 @@
+Interface: wlan0 (10.171.160.132)
+
+ Operator (10.171.160.78)
+ya.ru 77.88.44.242 OK
+vk.com 87.240.137.164 OK
+mail.ru 89.221.239.1 OK
+google.com 173.194.222.113 OK
+telegram.org 149.154.167.99 BLOCKED
+youtube.com 173.194.73.91 OK
+github.com 140.82.121.4 OK
+twitter.com 162.159.140.229 OK
+
+ Google (8.8.8.8)
+ya.ru TIMEOUT -
+vk.com TIMEOUT -
+mail.ru TIMEOUT -
+google.com TIMEOUT -
+telegram.org TIMEOUT -
+youtube.com TIMEOUT -
+github.com TIMEOUT -
+twitter.com TIMEOUT -
+
+ Yandex (77.88.8.8)
+ya.ru TIMEOUT -
+vk.com TIMEOUT -
+mail.ru TIMEOUT -
+google.com TIMEOUT -
+telegram.org TIMEOUT -
+youtube.com TIMEOUT -
+github.com TIMEOUT -
+twitter.com TIMEOUT -
