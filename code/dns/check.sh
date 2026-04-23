@@ -50,9 +50,14 @@ for dns_entry in "${DNS_SERVERS[@]}"; do
         ip=$(dig @"$dns_ip" "$domain" +short -b "$LOCAL_IP" +time=2 2>/dev/null | grep -E '^[0-9]+\.' | head -1)
 
         if [ -n "$ip" ]; then
-            tcp_ok=$(timeout 2 bash -c "echo >/dev/tcp/$ip/443" 2>/dev/null && echo "OK" || echo "BLOCKED")
-            printf "%-20s %-20s %-10s\n" "$domain" "$ip" "$tcp_ok"
-            echo "$domain $ip $tcp_ok" >> "$OUT"
+            tcp_ok=$(curl --interface "$IFACE" -s -o /dev/null -w "%{http_code}" --connect-timeout 2 "https://$ip" -k 2>/dev/null)
+            if [ "$tcp_ok" != "000" ]; then
+                tcp_status="OK"
+            else
+                tcp_status="BLOCKED"
+            fi
+            printf "%-20s %-20s %-10s\n" "$domain" "$ip" "$tcp_status"
+            echo "$domain $ip $tcp_status" >> "$OUT"
         else
             printf "%-20s %-20s %-10s\n" "$domain" "TIMEOUT" "-"
             echo "$domain TIMEOUT -" >> "$OUT"
