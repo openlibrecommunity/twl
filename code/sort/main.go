@@ -13,19 +13,8 @@ import (
 )
 
 type GeoRecord struct {
-	City struct {
-		Names map[string]string `maxminddb:"names"`
-	} `maxminddb:"city"`
-	Country struct {
-		ISOCode string            `maxminddb:"iso_code"`
-		Names   map[string]string `maxminddb:"names"`
-	} `maxminddb:"country"`
-	Traits struct {
-		AutonomousSystemNumber       uint   `maxminddb:"autonomous_system_number"`
-		AutonomousSystemOrganization string `maxminddb:"autonomous_system_organization"`
-		ISP                          string `maxminddb:"isp"`
-		Organization                 string `maxminddb:"organization"`
-	} `maxminddb:"traits"`
+	ASN uint   `maxminddb:"autonomous_system_number"`
+	Org string `maxminddb:"autonomous_system_organization"`
 }
 
 type OrgGroup struct {
@@ -82,23 +71,17 @@ func main() {
 			continue
 		}
 
-		org := record.Traits.AutonomousSystemOrganization
-		if org == "" {
-			org = record.Traits.Organization
-		}
-		if org == "" {
-			org = record.Traits.ISP
-		}
+		org := record.Org
 		if org == "" {
 			org = "Unknown"
 		}
 
-		key := fmt.Sprintf("%d_%s", record.Traits.AutonomousSystemNumber, org)
+		key := fmt.Sprintf("%d_%s", record.ASN, org)
 
 		if _, exists := byOrg[key]; !exists {
 			byOrg[key] = &OrgGroup{
 				Name: org,
-				ASN:  record.Traits.AutonomousSystemNumber,
+				ASN:  record.ASN,
 				IPs:  []string{},
 			}
 		}
