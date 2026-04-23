@@ -13,6 +13,19 @@
     }
   },
   {
+    "ip": "158.160.47.12",
+    "whitelist": true,
+    "tests": {
+      "icmp": "OK",
+      "tcp_22": "FAIL",
+      "tcp_443": "OK",
+      "tcp_80": "OK",
+      "udp_443": "NO_RESP",
+      "udp_51820": "NO_RESP",
+      "udp_53": "NO_RESP"
+    }
+  },
+  {
     "ip": "142.250.185.14",
     "whitelist": false,
     "tests": {
@@ -26,7 +39,7 @@
     }
   },
   {
-    "ip": "104.244.42.193",
+    "ip": "149.154.167.99",
     "whitelist": false,
     "tests": {
       "icmp": "FAIL",
@@ -52,7 +65,7 @@
     }
   },
   {
-    "ip": "149.154.167.99",
+    "ip": "104.244.42.193",
     "whitelist": false,
     "tests": {
       "icmp": "FAIL",
@@ -65,26 +78,26 @@
     }
   },
   {
-    "ip": "31.40.145.9",
+    "ip": "37.9.4.208",
     "whitelist": true,
     "tests": {
-      "icmp": "FAIL",
+      "icmp": "OK",
       "tcp_22": "FAIL",
-      "tcp_443": "FAIL",
-      "tcp_80": "FAIL",
+      "tcp_443": "OK",
+      "tcp_80": "OK",
       "udp_443": "NO_RESP",
       "udp_51820": "NO_RESP",
       "udp_53": "NO_RESP"
     }
   },
   {
-    "ip": "107.150.93.45",
+    "ip": "151.236.123.159",
     "whitelist": true,
     "tests": {
-      "icmp": "FAIL",
+      "icmp": "OK",
       "tcp_22": "FAIL",
-      "tcp_443": "FAIL",
-      "tcp_80": "FAIL",
+      "tcp_443": "OK",
+      "tcp_80": "OK",
       "udp_443": "NO_RESP",
       "udp_51820": "NO_RESP",
       "udp_53": "NO_RESP"
@@ -98,19 +111,6 @@
       "tcp_22": "FAIL",
       "tcp_443": "OK",
       "tcp_80": "OK",
-      "udp_443": "NO_RESP",
-      "udp_51820": "NO_RESP",
-      "udp_53": "NO_RESP"
-    }
-  },
-  {
-    "ip": "78.155.197.77",
-    "whitelist": true,
-    "tests": {
-      "icmp": "FAIL",
-      "tcp_22": "FAIL",
-      "tcp_443": "FAIL",
-      "tcp_80": "FAIL",
       "udp_443": "NO_RESP",
       "udp_51820": "NO_RESP",
       "udp_53": "NO_RESP"
