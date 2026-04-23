@@ -24,7 +24,7 @@ echo ""
 
 cd "$SCRIPT_DIR/code"
 
-echo "[1/4] Running sort (ASN grouping)..."
+echo "[1/5] Running sort (ASN grouping)..."
 if [ -f "$MMDB" ]; then
     go run sort/main.go "$MMDB" "$WHITELIST" > sort/out/sorted.json
     echo "  -> sort/out/sorted.json"
@@ -32,15 +32,19 @@ else
     echo "  -> SKIP (no $MMDB)"
 fi
 
-echo "[2/4] Running subnet analysis..."
+echo "[2/5] Running subnet analysis..."
 go run subnet/main.go "$WHITELIST" > subnet/out/subnets.json
 echo "  -> subnet/out/subnets.json"
 
-echo "[3/4] Running SNI check (compare mode)..."
+echo "[3/5] Running SNI check (compare mode)..."
 go run sni/main.go "$WHITELIST" "$WL_IFACE" "$DIRECT_IFACE" > sni/out/domains.json
 echo "  -> sni/out/domains.json"
 
-echo "[4/4] Running probe..."
+echo "[4/5] Running SNI blocking test..."
+go run sni/snicheck.go "$WL_IFACE" > sni/out/snicheck.json
+echo "  -> sni/out/snicheck.json"
+
+echo "[5/5] Running probe..."
 go run probe/main.go "$WHITELIST" "$WL_IFACE"
 echo "  -> probe/out/probe_results.json"
 
