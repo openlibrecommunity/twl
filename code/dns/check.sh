@@ -4,68 +4,61 @@ IFACE="wlan0"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 OUT="$SCRIPT_DIR/out/dns_results.txt"
 
+LOCAL_IP=$(ip -4 addr show "$IFACE" | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
+OPERATOR_DNS=$(nmcli dev show "$IFACE" 2>/dev/null | grep DNS | head -1 | awk '{print $2}')
+
+if [ -z "$OPERATOR_DNS" ]; then
+    OPERATOR_DNS=$(grep nameserver /etc/resolv.conf | grep -E '^nameserver 10\.' | head -1 | awk '{print $2}')
+fi
+
 DNS_SERVERS=(
+    "$OPERATOR_DNS:Operator"
     "8.8.8.8:Google"
-    "8.8.4.4:Google2"
-    "1.1.1.1:Cloudflare"
-    "1.0.0.1:Cloudflare2"
-    "9.9.9.9:Quad9"
-    "208.67.222.222:OpenDNS"
     "77.88.8.8:Yandex"
-    "77.88.8.1:Yandex2"
-    "77.88.8.88:YandexSafe"
-    "94.140.14.14:AdGuard"
-    "94.140.15.15:AdGuard2"
-    "76.76.2.0:ControlD"
-    "185.228.168.9:CleanBrowsing"
 )
 
 TEST_DOMAINS=(
     "ya.ru"
+    "vk.com"
+    "mail.ru"
     "google.com"
     "telegram.org"
     "youtube.com"
-    "zhuvpn.online"
     "github.com"
-    "vk.com"
-    "mail.ru"
+    "twitter.com"
 )
-
-LOCAL_IP=$(ip -4 addr show "$IFACE" | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
 
 echo "DNS check via $IFACE ($LOCAL_IP)"
 echo ""
 
 > "$OUT"
+echo "Interface: $IFACE ($LOCAL_IP)" >> "$OUT"
+echo "" >> "$OUT"
 
 for dns_entry in "${DNS_SERVERS[@]}"; do
     dns_ip="${dns_entry%%:*}"
     dns_name="${dns_entry##*:}"
 
-    printf "%-15s " "$dns_name"
+    [ -z "$dns_ip" ] && continue
 
-    if timeout 2 bash -c "echo >/dev/tcp/$dns_ip/53" 2>/dev/null; then
-        echo -n "OPEN  "
-        echo "$dns_name ($dns_ip): OPEN" >> "$OUT"
+    echo "=== $dns_name ($dns_ip) ==="
+    echo "=== $dns_name ($dns_ip) ===" >> "$OUT"
+    printf "%-20s %-20s %-10s\n" "DOMAIN" "IP" "TCP:443"
 
-        ok=0
-        fail=0
-        for domain in "${TEST_DOMAINS[@]}"; do
-            result=$(timeout 2 dig +short @"$dns_ip" "$domain" -b "$LOCAL_IP" 2>/dev/null | head -1)
-            if [ -n "$result" ]; then
-                ((ok++))
-                echo "  $domain: $result" >> "$OUT"
-            else
-                ((fail++))
-                echo "  $domain: FAIL" >> "$OUT"
-            fi
-        done
-        echo "$ok/${#TEST_DOMAINS[@]} resolved"
-    else
-        echo "BLOCKED"
-        echo "$dns_name ($dns_ip): BLOCKED" >> "$OUT"
-    fi
+    for domain in "${TEST_DOMAINS[@]}"; do
+        ip=$(dig @"$dns_ip" "$domain" +short -b "$LOCAL_IP" +time=2 2>/dev/null | grep -E '^[0-9]+\.' | head -1)
+
+        if [ -n "$ip" ]; then
+            tcp_ok=$(timeout 2 bash -c "echo >/dev/tcp/$ip/443" 2>/dev/null && echo "OK" || echo "BLOCKED")
+            printf "%-20s %-20s %-10s\n" "$domain" "$ip" "$tcp_ok"
+            echo "$domain $ip $tcp_ok" >> "$OUT"
+        else
+            printf "%-20s %-20s %-10s\n" "$domain" "TIMEOUT" "-"
+            echo "$domain TIMEOUT -" >> "$OUT"
+        fi
+    done
+    echo ""
+    echo "" >> "$OUT"
 done
 
-echo ""
 echo "Results: $OUT"
