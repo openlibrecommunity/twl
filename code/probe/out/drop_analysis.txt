@@ -1,0 +1,50 @@
+Interface: wlan0
+Whitelist IP: 77.88.55.242
+Non-whitelist IP: 149.154.167.99
+
+=== SYN Scan (-sS) ===
+WL:
+Host is up, received user-set (0.13s latency).
+443/tcp open  https   syn-ack ttl 52
+NW:
+Host is up, received user-set (0.045s latency).
+443/tcp closed https   reset ttl 53
+
+=== ACK Scan (-sA) ===
+WL:
+Host is up, received user-set (0.082s latency).
+443/tcp unfiltered https   reset ttl 52
+NW:
+Host is up, received user-set (0.044s latency).
+443/tcp unfiltered https   reset ttl 45
+
+=== FIN Scan (-sF) ===
+WL:
+Host is up, received user-set.
+443/tcp open|filtered https   no-response
+NW:
+Host is up, received user-set.
+443/tcp open|filtered https   no-response
+
+=== NULL Scan (-sN) ===
+WL:
+Host is up, received user-set.
+443/tcp open|filtered https   no-response
+NW:
+Host is up, received user-set.
+443/tcp open|filtered https   no-response
+
+=== Timing (hping3) ===
+WL SYN timing:
+NW SYN timing:
+timeout: failed to run command ‘hping3’: No such file or directory
+
+=== ICMP check ===
+WL:
+--- 77.88.55.242 ping statistics ---
+2 packets transmitted, 2 received, 0% packet loss, time 1002ms
+rtt min/avg/max/mdev = 87.934/99.738/111.542/11.804 ms
+NW:
+--- 149.154.167.99 ping statistics ---
+2 packets transmitted, 0 received, 100% packet loss, time 1039ms
+
