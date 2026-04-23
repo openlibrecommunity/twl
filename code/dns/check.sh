@@ -41,9 +41,10 @@ for dns_entry in "${DNS_SERVERS[@]}"; do
 
     [ -z "$dns_ip" ] && continue
 
-    echo "=== $dns_name ($dns_ip) ==="
-    echo "=== $dns_name ($dns_ip) ===" >> "$OUT"
+    echo " $dns_name ($dns_ip) "
+    echo " $dns_name ($dns_ip) " >> "$OUT"
     printf "%-20s %-20s %-10s\n" "DOMAIN" "IP" "TCP:443"
+    echo "" >> "$OUT"
 
     for domain in "${TEST_DOMAINS[@]}"; do
         ip=$(dig @"$dns_ip" "$domain" +short -b "$LOCAL_IP" +time=2 2>/dev/null | grep -E '^[0-9]+\.' | head -1)
