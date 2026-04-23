@@ -3,7 +3,8 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-IFACE="${1:-wlan0}"
+WL_IFACE="${1:-wlan0}"
+DIRECT_IFACE="${2:-tun0}"
 WHITELIST="$SCRIPT_DIR/code/scan/out/whitelist_ips.txt"
 MMDB="$SCRIPT_DIR/code/sort/data/GeoLite2-ASN.mmdb"
 
@@ -16,7 +17,8 @@ fi
 IP_COUNT=$(grep -c "^open" "$WHITELIST" 2>/dev/null || echo "0")
 echo "=== Whitelist Analysis ==="
 echo "Input: $WHITELIST ($IP_COUNT IPs)"
-echo "Interface: $IFACE"
+echo "Whitelist interface: $WL_IFACE"
+echo "Direct interface:    $DIRECT_IFACE"
 echo "Started: $(date '+%Y-%m-%d %H:%M:%S')"
 echo ""
 
@@ -34,12 +36,12 @@ echo "[2/4] Running subnet analysis..."
 go run subnet/main.go "$WHITELIST" > subnet/out/subnets.json
 echo "  -> subnet/out/subnets.json"
 
-echo "[3/4] Running SNI check..."
-go run sni/main.go "$WHITELIST" > sni/out/domains.json
+echo "[3/4] Running SNI check (compare mode)..."
+go run sni/main.go "$WHITELIST" "$WL_IFACE" "$DIRECT_IFACE" > sni/out/domains.json
 echo "  -> sni/out/domains.json"
 
 echo "[4/4] Running probe..."
-go run probe/main.go "$WHITELIST" "$IFACE"
+go run probe/main.go "$WHITELIST" "$WL_IFACE"
 echo "  -> probe/out/probe_results.json"
 
 cd "$SCRIPT_DIR"

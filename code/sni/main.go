@@ -14,16 +14,29 @@ import (
 )
 
 type HostInfo struct {
-	IP      string   `json:"ip"`
-	CN      string   `json:"cn,omitempty"`
-	SANs    []string `json:"sans,omitempty"`
-	Issuer  string   `json:"issuer,omitempty"`
-	Error   string   `json:"error,omitempty"`
+	IP     string   `json:"ip"`
+	CN     string   `json:"cn,omitempty"`
+	SANs   []string `json:"sans,omitempty"`
+	Issuer string   `json:"issuer,omitempty"`
+	Error  string   `json:"error,omitempty"`
+}
+
+type CompareResult struct {
+	IP          string   `json:"ip"`
+	CN          string   `json:"cn,omitempty"`
+	SANs        []string `json:"sans,omitempty"`
+	Issuer      string   `json:"issuer,omitempty"`
+	Whitelisted bool     `json:"whitelisted"`
+	Blocked     bool     `json:"blocked"`
+	ErrorWL     string   `json:"error_wl,omitempty"`
+	ErrorDirect string   `json:"error_direct,omitempty"`
 }
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintf(os.Stderr, "Usage: %s <whitelist_ips.txt>\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Usage: %s <whitelist_ips.txt> [wl_interface] [direct_interface]\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  Single interface: %s ips.txt\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  Compare mode:     %s ips.txt wlan0 tun0\n", os.Args[0])
 		os.Exit(1)
 	}
 
@@ -47,8 +60,72 @@ func main() {
 		}
 	}
 
+	if len(os.Args) >= 4 {
+		wlIface := os.Args[2]
+		directIface := os.Args[3]
+		runCompareMode(ips, wlIface, directIface)
+	} else {
+		runSingleMode(ips, "")
+	}
+}
+
+func runSingleMode(ips []string, iface string) {
 	fmt.Fprintf(os.Stderr, "Checking %d IPs...\n", len(ips))
 
+	results := checkAllIPs(ips, iface)
+
+	output, _ := json.MarshalIndent(results, "", "  ")
+	fmt.Println(string(output))
+}
+
+func runCompareMode(ips []string, wlIface, directIface string) {
+	fmt.Fprintf(os.Stderr, "Compare mode: %d IPs\n", len(ips))
+	fmt.Fprintf(os.Stderr, "  Whitelist interface: %s\n", wlIface)
+	fmt.Fprintf(os.Stderr, "  Direct interface:    %s\n", directIface)
+	fmt.Fprintf(os.Stderr, "\n")
+
+	fmt.Fprintf(os.Stderr, "[1/2] Checking via %s (whitelist)...\n", wlIface)
+	wlResults := checkAllIPs(ips, wlIface)
+	wlMap := make(map[string]HostInfo)
+	for _, r := range wlResults {
+		wlMap[r.IP] = r
+	}
+
+	fmt.Fprintf(os.Stderr, "[2/2] Checking via %s (direct)...\n", directIface)
+	directResults := checkAllIPs(ips, directIface)
+
+	var compared []CompareResult
+	var blockedCount int
+
+	for _, direct := range directResults {
+		wl := wlMap[direct.IP]
+
+		result := CompareResult{
+			IP:          direct.IP,
+			CN:          direct.CN,
+			SANs:        direct.SANs,
+			Issuer:      direct.Issuer,
+			Whitelisted: wl.Error == "" && wl.CN != "",
+			ErrorDirect: direct.Error,
+			ErrorWL:     wl.Error,
+		}
+
+		// Blocked = works via direct but fails via whitelist interface
+		if direct.Error == "" && wl.Error != "" {
+			result.Blocked = true
+			blockedCount++
+		}
+
+		compared = append(compared, result)
+	}
+
+	fmt.Fprintf(os.Stderr, "\nResults: %d total, %d blocked via %s\n", len(compared), blockedCount, wlIface)
+
+	output, _ := json.MarshalIndent(compared, "", "  ")
+	fmt.Println(string(output))
+}
+
+func checkAllIPs(ips []string, iface string) []HostInfo {
 	workers := 100
 	timeout := 5 * time.Second
 	jobs := make(chan string, 1000)
@@ -57,33 +134,30 @@ func main() {
 	var wg sync.WaitGroup
 	var checked uint64
 
-	// Workers
 	for i := 0; i < workers; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			for ip := range jobs {
-				info := checkTLS(ip, timeout)
+				info := checkTLS(ip, iface, timeout)
 				atomic.AddUint64(&checked, 1)
 				results <- info
 			}
 		}()
 	}
 
-	// Progress
 	go func() {
 		total := uint64(len(ips))
 		for {
 			time.Sleep(3 * time.Second)
 			c := atomic.LoadUint64(&checked)
-			fmt.Fprintf(os.Stderr, "Progress: %d/%d (%.1f%%)\n", c, total, float64(c)/float64(total)*100)
+			fmt.Fprintf(os.Stderr, "  Progress: %d/%d (%.1f%%)\n", c, total, float64(c)/float64(total)*100)
 			if c >= total {
 				break
 			}
 		}
 	}()
 
-	// Collector
 	var all []HostInfo
 	done := make(chan struct{})
 	go func() {
@@ -93,7 +167,6 @@ func main() {
 		close(done)
 	}()
 
-	// Feed jobs
 	for _, ip := range ips {
 		jobs <- ip
 	}
@@ -102,16 +175,23 @@ func main() {
 	close(results)
 	<-done
 
-	// Output JSON
-	output, _ := json.MarshalIndent(all, "", "  ")
-	fmt.Println(string(output))
+	return all
 }
 
-func checkTLS(ip string, timeout time.Duration) HostInfo {
+func checkTLS(ip string, iface string, timeout time.Duration) HostInfo {
 	info := HostInfo{IP: ip}
 
+	dialer := &net.Dialer{Timeout: timeout}
+
+	if iface != "" {
+		localIP := getInterfaceIP(iface)
+		if localIP != "" {
+			dialer.LocalAddr = &net.TCPAddr{IP: net.ParseIP(localIP)}
+		}
+	}
+
 	conn, err := tls.DialWithDialer(
-		&net.Dialer{Timeout: timeout},
+		dialer,
 		"tcp",
 		ip+":443",
 		&tls.Config{InsecureSkipVerify: true},
@@ -134,4 +214,21 @@ func checkTLS(ip string, timeout time.Duration) HostInfo {
 	info.Issuer = cert.Issuer.CommonName
 
 	return info
+}
+
+func getInterfaceIP(name string) string {
+	iface, err := net.InterfaceByName(name)
+	if err != nil {
+		return ""
+	}
+	addrs, err := iface.Addrs()
+	if err != nil {
+		return ""
+	}
+	for _, addr := range addrs {
+		if ipnet, ok := addr.(*net.IPNet); ok && ipnet.IP.To4() != nil {
+			return ipnet.IP.String()
+		}
+	}
+	return ""
 }
