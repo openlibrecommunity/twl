@@ -6,7 +6,7 @@ BASE_DIR="$(dirname "$SCRIPT_DIR")"
 IFACE="wlan0"
 RANGES="$BASE_DIR/data/ruranges4.txt"
 OUTPUT="$BASE_DIR/out/whitelist_ips.txt"
-RATE=10000
+RATE=3000
 
 if [ ! -f "$RANGES" ]; then
     echo "Error: $RANGES not found"
