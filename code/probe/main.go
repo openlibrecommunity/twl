@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -36,25 +37,6 @@ func main() {
 	fmt.Printf("Probe via %s (%s)\n\n", iface, localIP)
 
 	whitelistIPs := loadIPs(whitelistFile)
-	if len(whitelistIPs) == 0 {
-		fmt.Fprintf(os.Stderr, "No IPs loaded\n")
-		os.Exit(1)
-	}
-
-	nonWhitelistIPs := []string{
-		"149.154.167.99",  // telegram
-		"142.250.185.14",  // google
-		"151.101.1.140",   // reddit
-		"104.244.42.193",  // twitter
-		"157.240.1.35",    // facebook
-		"52.94.236.248",   // aws
-		"13.107.42.14",    // microsoft
-		"185.199.108.153", // github pages
-		"104.16.132.229",  // cloudflare
-		"8.8.8.8",         // google dns
-	}
-
-	rand.Seed(time.Now().UnixNano())
 
 	guaranteedWhitelist := []string{
 		"77.88.55.242",  // ya.ru
@@ -62,25 +44,46 @@ func main() {
 		"217.20.147.1",  // max.ru
 	}
 
+	nonWhitelistIPs := []string{
+		"149.154.167.99",  // telegram
+		"142.250.185.14",  // google
+		"104.244.42.193",  // twitter
+	}
+
+	rand.Seed(time.Now().UnixNano())
 	selectedWhitelist := append(guaranteedWhitelist, randomSample(whitelistIPs, 3)...)
 
-	var results []ProbeResult
+	var wg sync.WaitGroup
+	results := make(chan ProbeResult, 20)
 
-	fmt.Println("=== Whitelist IPs ===")
 	for _, ip := range selectedWhitelist {
-		r := probeIP(ip, iface, true)
-		results = append(results, r)
-		printResult(r)
+		wg.Add(1)
+		go func(ip string) {
+			defer wg.Done()
+			results <- probeIP(ip, iface, true)
+		}(ip)
 	}
 
-	fmt.Println("\n=== Non-Whitelist IPs ===")
 	for _, ip := range nonWhitelistIPs {
-		r := probeIP(ip, iface, false)
-		results = append(results, r)
+		wg.Add(1)
+		go func(ip string) {
+			defer wg.Done()
+			results <- probeIP(ip, iface, false)
+		}(ip)
+	}
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	var all []ProbeResult
+	for r := range results {
+		all = append(all, r)
 		printResult(r)
 	}
 
-	output, _ := json.MarshalIndent(results, "", "  ")
+	output, _ := json.MarshalIndent(all, "", "  ")
 	os.WriteFile("out/probe_results.json", output, 0644)
 	fmt.Println("\nResults: out/probe_results.json")
 }
@@ -92,20 +95,34 @@ func probeIP(ip string, iface string, whitelist bool) ProbeResult {
 		Tests:     make(map[string]string),
 	}
 
-	// ICMP
-	r.Tests["icmp"] = testICMP(ip, iface)
+	var wg sync.WaitGroup
+	var mu sync.Mutex
 
-	// TCP ports
-	r.Tests["tcp_80"] = testTCP(ip, "80", iface)
-	r.Tests["tcp_443"] = testTCP(ip, "443", iface)
-	r.Tests["tcp_22"] = testTCP(ip, "22", iface)
-	r.Tests["tcp_53"] = testTCP(ip, "53", iface)
+	tests := []struct {
+		name string
+		fn   func() string
+	}{
+		{"icmp", func() string { return testICMP(ip, iface) }},
+		{"tcp_80", func() string { return testTCPCurl(ip, "80", iface) }},
+		{"tcp_443", func() string { return testTCPCurl(ip, "443", iface) }},
+		{"tcp_22", func() string { return testTCPCurl(ip, "22", iface) }},
+		{"udp_443", func() string { return testUDP(ip, "443", iface) }},
+		{"udp_53", func() string { return testUDP(ip, "53", iface) }},
+		{"udp_51820", func() string { return testUDP(ip, "51820", iface) }},
+	}
 
-	// UDP
-	r.Tests["udp_443"] = testUDP(ip, "443", iface)
-	r.Tests["udp_53"] = testUDP(ip, "53", iface)
-	r.Tests["udp_51820"] = testUDP(ip, "51820", iface)
+	for _, t := range tests {
+		wg.Add(1)
+		go func(name string, fn func() string) {
+			defer wg.Done()
+			result := fn()
+			mu.Lock()
+			r.Tests[name] = result
+			mu.Unlock()
+		}(t.name, t.fn)
+	}
 
+	wg.Wait()
 	return r
 }
 
@@ -118,18 +135,24 @@ func testICMP(ip string, iface string) string {
 	return "OK"
 }
 
-func testTCP(ip string, port string, iface string) string {
-	localIP := getInterfaceIP(iface)
-	dialer := &net.Dialer{
-		Timeout:   2 * time.Second,
-		LocalAddr: &net.TCPAddr{IP: net.ParseIP(localIP)},
+func testTCPCurl(ip string, port string, iface string) string {
+	proto := "http"
+	if port == "443" {
+		proto = "https"
 	}
-	conn, err := dialer.Dial("tcp", ip+":"+port)
+	url := fmt.Sprintf("%s://%s:%s", proto, ip, port)
+
+	cmd := exec.Command("curl", "--interface", iface, "-k", "-s", "-o", "/dev/null",
+		"-w", "%{http_code}", "--connect-timeout", "2", url)
+	out, err := cmd.Output()
 	if err != nil {
 		return "FAIL"
 	}
-	conn.Close()
-	return "OK"
+	code := strings.TrimSpace(string(out))
+	if code != "000" {
+		return "OK"
+	}
+	return "FAIL"
 }
 
 func testUDP(ip string, port string, iface string) string {
@@ -144,10 +167,7 @@ func testUDP(ip string, port string, iface string) string {
 	defer conn.Close()
 
 	conn.SetDeadline(time.Now().Add(2 * time.Second))
-	_, err = conn.Write([]byte{0x00})
-	if err != nil {
-		return "FAIL"
-	}
+	conn.Write([]byte{0x00})
 
 	buf := make([]byte, 1)
 	_, err = conn.Read(buf)
