@@ -3,22 +3,61 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-WL_IFACE="${1:-wlan0}"
-DIRECT_IFACE="${2:-tun0}"
+
+# Parse arguments
+MODE=""
+WL_IFACE="wlan0"
+DIRECT_IFACE="tun0"
+
+if [ "$1" = "all" ]; then
+    MODE="all"
+    WL_IFACE="${2:-wlan0}"
+    DIRECT_IFACE="${3:-tun0}"
+else
+    WL_IFACE="${1:-wlan0}"
+    DIRECT_IFACE="${2:-tun0}"
+fi
+
 WHITELIST="$SCRIPT_DIR/code/scan/out/whitelist_ips.txt"
 VERIFIED="$SCRIPT_DIR/code/scan/out/verify/verified.txt"
 MMDB="$SCRIPT_DIR/code/sort/data/GeoLite2-ASN.mmdb"
+RANGES="$SCRIPT_DIR/code/scan/data/ruranges4.txt"
 
+# === FULL SCAN MODE ===
+if [ "$MODE" = "all" ]; then
+    echo "=========================================="
+    echo "=== FULL PIPELINE (from scratch) ==="
+    echo "=========================================="
+    echo "Whitelist interface: $WL_IFACE"
+    echo "Direct interface:    $DIRECT_IFACE"
+    echo "Started: $(date '+%Y-%m-%d %H:%M:%S')"
+    echo ""
+
+    # Step 0: Masscan
+    echo "[0/7] Running masscan (port 443 scan)..."
+    if [ ! -f "$RANGES" ]; then
+        echo "Error: $RANGES not found"
+        exit 1
+    fi
+    RANGE_COUNT=$(wc -l < "$RANGES" | tr -d ' ')
+    echo "  Ranges: $RANGE_COUNT subnets"
+    echo "  Rate: 3000 pps"
+    echo "  Output: $WHITELIST"
+    sudo masscan --adapter "$WL_IFACE" -p443 -iL "$RANGES" --rate 3000 -oL "$WHITELIST"
+    echo ""
+fi
+
+# === NORMAL MODE ===
 if [ ! -f "$WHITELIST" ]; then
     echo "Error: $WHITELIST not found"
-    echo "Run scan first: ./code/scan/script/scan.sh"
+    echo "Run: ./run.sh all"
     exit 1
 fi
 
-IP_COUNT=$(grep -c "^open" "$WHITELIST" 2>/dev/null || echo "0")
+IP_COUNT=$(wc -l < "$WHITELIST" | tr -d ' ')
 VERIFIED_COUNT=0
 if [ -f "$VERIFIED" ]; then
-    VERIFIED_COUNT=$(wc -l < "$VERIFIED")
+    VERIFIED_COUNT=$(wc -l < "$VERIFIED" | tr -d ' ')
 fi
 
 echo "=== Whitelist Analysis ==="
@@ -31,15 +70,15 @@ echo ""
 
 cd "$SCRIPT_DIR/code"
 
-echo "[1/6] Deduplicating IPs..."
+echo "[1/7] Deduplicating IPs..."
 bash scan/script/dedupe.sh
 echo ""
 
-echo "[2/6] Verifying with nmap..."
+echo "[2/7] Verifying with nmap..."
 bash scan/script/verify.sh "$WL_IFACE"
 echo ""
 
-echo "[3/6] Running sort (ASN grouping)..."
+echo "[3/7] Running sort (ASN grouping)..."
 if [ -f "$MMDB" ]; then
     go run sort/main.go "$MMDB" "$WHITELIST" "$VERIFIED"
     echo "  -> sort/out/sorted.json (raw)"
@@ -48,7 +87,7 @@ else
     echo "  -> SKIP (no $MMDB)"
 fi
 
-echo "[4/6] Running subnet analysis..."
+echo "[4/7] Running subnet analysis..."
 go run subnet/main.go "$WHITELIST" > subnet/out/subnets.json
 if [ -f "$VERIFIED" ]; then
     go run subnet/main.go "$VERIFIED" > subnet/out/subnets.c.json
@@ -57,17 +96,21 @@ else
     echo "  -> subnet/out/subnets.json"
 fi
 
-echo "[5/6] Running SNI check (compare mode)..."
+echo "[5/7] Running SNI check (compare mode)..."
 go run sni/main.go "$WHITELIST" "$WL_IFACE" "$DIRECT_IFACE" > sni/out/domains.json
 echo "  -> sni/out/domains.json"
 
-echo "[6/6] Running SNI blocking test..."
+echo "[6/7] Running SNI blocking test..."
 go run sni/snicheck.go "$WL_IFACE" > sni/out/snicheck.json
 echo "  -> sni/out/snicheck.json"
 
+echo "[7/7] Running probe..."
+go run probe/main.go "$WHITELIST" "$WL_IFACE"
+echo "  -> probe/out/probe_results.json"
+
 cd "$SCRIPT_DIR"
 
-VERIFIED_COUNT=$(wc -l < "$VERIFIED" 2>/dev/null || echo "0")
+VERIFIED_COUNT=$(wc -l < "$VERIFIED" 2>/dev/null | tr -d ' ' || echo "0")
 
 echo ""
 echo "=== Committing results ==="
