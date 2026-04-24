@@ -49,9 +49,9 @@ if [ "$MODE" = "all" ]; then
 
     RANGE_COUNT=$(wc -l < "$RANGES" | tr -d ' ')
     echo "  Ranges: $RANGE_COUNT subnets"
-    echo "  Rate: 10000 pps"
+    echo "  Rate: 6000 pps"
     echo "  Output: $WHITELIST"
-    sudo masscan --adapter "$WL_IFACE" -p443 -iL "$RANGES" --rate 10000 -oL "$WHITELIST"
+    sudo masscan --adapter "$WL_IFACE" -p443 -iL "$RANGES" --rate 6000 -oL "$WHITELIST" --retries 3
     echo ""
 fi
 
