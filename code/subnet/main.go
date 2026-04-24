@@ -18,20 +18,13 @@ type Subnet struct {
 	IPs   []string `json:"ips"`
 }
 
-func main() {
-	if len(os.Args) < 2 {
-		fmt.Fprintf(os.Stderr, "Usage: %s <whitelist_ips.txt>\n", os.Args[0])
-		os.Exit(1)
-	}
-
-	file, err := os.Open(os.Args[1])
+func parseIPs(filename string, isMasscan bool) []Subnet {
+	file, err := os.Open(filename)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to open input: %v\n", err)
-		os.Exit(1)
+		return nil
 	}
 	defer file.Close()
 
-	// Group by /24
 	subnets := make(map[string][]string)
 	scanner := bufio.NewScanner(file)
 
@@ -40,18 +33,26 @@ func main() {
 		if strings.HasPrefix(line, "#") {
 			continue
 		}
-		parts := strings.Fields(line)
-		if len(parts) < 4 {
-			continue
+
+		var ipStr string
+		if isMasscan {
+			parts := strings.Fields(line)
+			if len(parts) < 4 {
+				continue
+			}
+			ipStr = parts[3]
+		} else {
+			ipStr = strings.TrimSpace(line)
+			if ipStr == "" {
+				continue
+			}
 		}
-		ipStr := parts[3]
 
 		ip := net.ParseIP(ipStr)
 		if ip == nil {
 			continue
 		}
 
-		// Get /24 prefix
 		ip4 := ip.To4()
 		if ip4 == nil {
 			continue
@@ -60,7 +61,6 @@ func main() {
 		subnets[prefix] = append(subnets[prefix], ipStr)
 	}
 
-	// Convert to slice and calc stats
 	var result []Subnet
 	for cidr, ips := range subnets {
 		result = append(result, Subnet{
@@ -72,11 +72,43 @@ func main() {
 		})
 	}
 
-	// Sort by count desc
 	sort.Slice(result, func(i, j int) bool {
 		return result[i].Count > result[j].Count
 	})
 
+	return result
+}
+
+func main() {
+	if len(os.Args) < 2 {
+		fmt.Fprintf(os.Stderr, "Usage: %s <whitelist_ips.txt|verified.txt>\n", os.Args[0])
+		os.Exit(1)
+	}
+
+	filename := os.Args[1]
+
+	// Detect format: masscan has "open tcp 443", plain list doesn't
+	file, err := os.Open(filename)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to open input: %v\n", err)
+		os.Exit(1)
+	}
+
+	scanner := bufio.NewScanner(file)
+	isMasscan := false
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "#") {
+			continue
+		}
+		if strings.HasPrefix(line, "open") {
+			isMasscan = true
+		}
+		break
+	}
+	file.Close()
+
+	result := parseIPs(filename, isMasscan)
 	output, _ := json.MarshalIndent(result, "", "  ")
 	fmt.Println(string(output))
 }
