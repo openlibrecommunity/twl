@@ -4,7 +4,6 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# Parse arguments
 MODE=""
 WL_IFACE="wlan0"
 DIRECT_IFACE="enp7s0"
@@ -12,10 +11,10 @@ DIRECT_IFACE="enp7s0"
 if [ "$1" = "all" ]; then
     MODE="all"
     WL_IFACE="${2:-wlan0}"
-    DIRECT_IFACE="${3:-tun0}"
+    DIRECT_IFACE="${3:-enp7s0}"
 else
     WL_IFACE="${1:-wlan0}"
-    DIRECT_IFACE="${2:-tun0}"
+    DIRECT_IFACE="${2:-enp7s0}"
 fi
 
 WHITELIST="$SCRIPT_DIR/code/scan/out/whitelist_ips.txt"
@@ -50,9 +49,9 @@ if [ "$MODE" = "all" ]; then
 
     RANGE_COUNT=$(wc -l < "$RANGES" | tr -d ' ')
     echo "  Ranges: $RANGE_COUNT subnets"
-    echo "  Rate: 3000 pps"
+    echo "  Rate: 10000 pps"
     echo "  Output: $WHITELIST"
-    sudo masscan --adapter "$WL_IFACE" -p443 -iL "$RANGES" --rate 3000 -oL "$WHITELIST"
+    sudo masscan --adapter "$WL_IFACE" -p443 -iL "$RANGES" --rate 10000 -oL "$WHITELIST"
     echo ""
 fi
 
