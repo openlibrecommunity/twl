@@ -7,7 +7,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # Parse arguments
 MODE=""
 WL_IFACE="wlan0"
-DIRECT_IFACE="tun0"
+DIRECT_IFACE="enp7s0"
 
 if [ "$1" = "all" ]; then
     MODE="all"
