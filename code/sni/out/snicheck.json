@@ -1,20 +1,3 @@
-SNI blocking test via wlan0 (curl)
-
-If blocked_sni=OK → IP-only blocking
-If blocked_sni=FAIL → SNI filtering active
-
-[77.88.55.242] SNI=telegram.org    no_sni:OK   blocked:OK   white:OK  
-[87.240.132.78] SNI=twitter.com     no_sni:OK   blocked:FAIL white:OK  
-[77.88.55.242] SNI=youtube.com     no_sni:OK   blocked:OK   white:OK  
-[217.20.147.1] SNI=telegram.org    no_sni:OK   blocked:OK   white:OK  
-[217.20.147.1] SNI=youtube.com     no_sni:OK   blocked:OK   white:OK  
-[87.240.132.78] SNI=youtube.com     no_sni:OK   blocked:OK   white:OK  
-[87.240.132.78] SNI=telegram.org    no_sni:OK   blocked:OK   white:OK  
-[77.88.55.242] SNI=twitter.com     no_sni:OK   blocked:OK   white:OK  
-[77.88.55.242] SNI=google.com      no_sni:OK   blocked:OK   white:    
-[217.20.147.1] SNI=google.com      no_sni:OK   blocked:OK   white:    
-[87.240.132.78] SNI=google.com      no_sni:OK   blocked:OK   white:    
-[217.20.147.1] SNI=twitter.com     no_sni:OK   blocked:FAIL white:FAIL
 [
   {
     "whitelist_ip": "77.88.55.242",
@@ -27,7 +10,7 @@ If blocked_sni=FAIL → SNI filtering active
     "whitelist_ip": "77.88.55.242",
     "blocked_sni": "twitter.com",
     "test_no_sni": "OK",
-    "test_blocked_sni": "OK",
+    "test_blocked_sni": "FAIL",
     "test_whitelist_sni": "OK"
   },
   {
