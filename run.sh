@@ -39,6 +39,15 @@ if [ "$MODE" = "all" ]; then
         echo "Error: $RANGES not found"
         exit 1
     fi
+
+    # Create output directories
+    mkdir -p "$SCRIPT_DIR/code/scan/out/verify"
+    mkdir -p "$SCRIPT_DIR/code/sort/out"
+    mkdir -p "$SCRIPT_DIR/code/subnet/out"
+    mkdir -p "$SCRIPT_DIR/code/sni/out"
+    mkdir -p "$SCRIPT_DIR/code/probe/out"
+    mkdir -p "$SCRIPT_DIR/code/dns/out"
+
     RANGE_COUNT=$(wc -l < "$RANGES" | tr -d ' ')
     echo "  Ranges: $RANGE_COUNT subnets"
     echo "  Rate: 3000 pps"
