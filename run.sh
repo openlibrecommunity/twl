@@ -19,7 +19,7 @@ fi
 
 WHITELIST="$SCRIPT_DIR/code/scan/out/whitelist_ips.txt"
 VERIFIED="$SCRIPT_DIR/code/scan/out/verify/verified.txt"
-MMDB="$SCRIPT_DIR/code/sort/data/GeoLite2-ASN.mmdb"
+MMDB="$SCRIPT_DIR/code/sort/data/geo.mmdb"
 RANGES="$SCRIPT_DIR/code/scan/data/ruranges4.txt"
 
 # === FULL SCAN MODE ===
