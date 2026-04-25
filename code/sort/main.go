@@ -124,7 +124,7 @@ func main() {
 	rawInput := os.Args[2]
 	rawGroups := processFile(db, rawInput, true)
 	if rawGroups != nil {
-		rawOut := filepath.Join(outDir, "sorted.json")
+		rawOut := outDir + "/sorted.json"
 		if err := writeJSON(rawGroups, rawOut); err != nil {
 			fmt.Fprintf(os.Stderr, "Failed to write sorted.json: %v\n", err)
 		} else {
@@ -142,13 +142,13 @@ func main() {
 		verifiedInput = os.Args[3]
 	} else {
 		// Try default path
-		verifiedInput = filepath.Join(filepath.Dir(rawInput), "verify", "verified.txt")
+		verifiedInput = rawInput[:strings.LastIndex(rawInput, "/")] + "/verify/verified.txt"
 	}
 
 	if _, err := os.Stat(verifiedInput); err == nil {
 		verifiedGroups := processFile(db, verifiedInput, false)
 		if verifiedGroups != nil {
-			verifiedOut := filepath.Join(outDir, "sorted.c.json")
+			verifiedOut := outDir + "/sorted.c.json"
 			if err := writeJSON(verifiedGroups, verifiedOut); err != nil {
 				fmt.Fprintf(os.Stderr, "Failed to write sorted.c.json: %v\n", err)
 			} else {
