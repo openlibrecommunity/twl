@@ -1,0 +1,86 @@
+[
+  {
+    "whitelist_ip": "77.88.55.242",
+    "blocked_sni": "telegram.org",
+    "test_no_sni": "OK",
+    "test_blocked_sni": "OK",
+    "test_whitelist_sni": "OK"
+  },
+  {
+    "whitelist_ip": "77.88.55.242",
+    "blocked_sni": "twitter.com",
+    "test_no_sni": "OK",
+    "test_blocked_sni": "FAIL",
+    "test_whitelist_sni": "OK"
+  },
+  {
+    "whitelist_ip": "77.88.55.242",
+    "blocked_sni": "youtube.com",
+    "test_no_sni": "OK",
+    "test_blocked_sni": "OK",
+    "test_whitelist_sni": "OK"
+  },
+  {
+    "whitelist_ip": "77.88.55.242",
+    "blocked_sni": "google.com",
+    "test_no_sni": "OK",
+    "test_blocked_sni": "OK",
+    "test_whitelist_sni": ""
+  },
+  {
+    "whitelist_ip": "87.240.132.78",
+    "blocked_sni": "telegram.org",
+    "test_no_sni": "OK",
+    "test_blocked_sni": "OK",
+    "test_whitelist_sni": "OK"
+  },
+  {
+    "whitelist_ip": "87.240.132.78",
+    "blocked_sni": "twitter.com",
+    "test_no_sni": "OK",
+    "test_blocked_sni": "OK",
+    "test_whitelist_sni": "OK"
+  },
+  {
+    "whitelist_ip": "87.240.132.78",
+    "blocked_sni": "youtube.com",
+    "test_no_sni": "OK",
+    "test_blocked_sni": "OK",
+    "test_whitelist_sni": "OK"
+  },
+  {
+    "whitelist_ip": "87.240.132.78",
+    "blocked_sni": "google.com",
+    "test_no_sni": "OK",
+    "test_blocked_sni": "OK",
+    "test_whitelist_sni": ""
+  },
+  {
+    "whitelist_ip": "217.20.147.1",
+    "blocked_sni": "telegram.org",
+    "test_no_sni": "OK",
+    "test_blocked_sni": "OK",
+    "test_whitelist_sni": "OK"
+  },
+  {
+    "whitelist_ip": "217.20.147.1",
+    "blocked_sni": "twitter.com",
+    "test_no_sni": "OK",
+    "test_blocked_sni": "FAIL",
+    "test_whitelist_sni": "FAIL"
+  },
+  {
+    "whitelist_ip": "217.20.147.1",
+    "blocked_sni": "youtube.com",
+    "test_no_sni": "OK",
+    "test_blocked_sni": "OK",
+    "test_whitelist_sni": "OK"
+  },
+  {
+    "whitelist_ip": "217.20.147.1",
+    "blocked_sni": "google.com",
+    "test_no_sni": "OK",
+    "test_blocked_sni": "OK",
+    "test_whitelist_sni": ""
+  }
+]
