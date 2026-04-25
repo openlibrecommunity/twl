@@ -38,7 +38,7 @@
     "whitelist_ip": "87.240.132.78",
     "blocked_sni": "twitter.com",
     "test_no_sni": "OK",
-    "test_blocked_sni": "OK",
+    "test_blocked_sni": "FAIL",
     "test_whitelist_sni": "OK"
   },
   {
