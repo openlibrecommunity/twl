@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 
@@ -118,11 +117,8 @@ func main() {
 	}
 	defer db.Close()
 
-	exe, _ := os.Executable()
-	outDir := filepath.Join(filepath.Dir(exe), "out")
-	if _, err := os.Stat(outDir); os.IsNotExist(err) {
-		outDir = "out"
-	}
+	outDir := "sort/out"
+	os.MkdirAll(outDir, 0755)
 
 	// Process raw masscan output -> sorted.json
 	rawInput := os.Args[2]
