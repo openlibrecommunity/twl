@@ -21,6 +21,7 @@ WHITELIST="$SCRIPT_DIR/code/scan/out/whitelist_ips.txt"
 VERIFIED="$SCRIPT_DIR/code/scan/out/verify/verified.txt"
 MMDB="$SCRIPT_DIR/code/sort/data/geo.mmdb"
 RANGES="$SCRIPT_DIR/code/scan/data/ruranges4.txt"
+PPS=6000
 
 # === FULL SCAN MODE ===
 if [ "$MODE" = "all" ]; then
@@ -49,9 +50,9 @@ if [ "$MODE" = "all" ]; then
 
     RANGE_COUNT=$(wc -l < "$RANGES" | tr -d ' ')
     echo "  Ranges: $RANGE_COUNT subnets"
-    echo "  Rate: 6000 pps"
+    echo "  Rate: $PPS pps"
     echo "  Output: $WHITELIST"
-    sudo masscan --adapter "$WL_IFACE" -p443 -iL "$RANGES" --rate 6000 -oL "$WHITELIST" --retries 3
+    sudo masscan --adapter "$WL_IFACE" -p443 -iL "$RANGES" --rate $PPS -oL "$WHITELIST" --retries 3
     echo ""
 fi
 
