@@ -5,86 +5,63 @@ import (
 	"encoding/binary"
 	"flag"
 	"fmt"
-	"io"
 	"math/bits"
 	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 )
-
-// Sources: delegated stats from each RIR.
-// We pull all of them to cover every country code, then filter.
-var rirSources = map[string]string{
-	"ripencc": "https://ftp.ripe.net/pub/stats/ripencc/delegated-ripencc-extended-latest",
-	"arin":    "https://ftp.arin.net/pub/stats/arin/delegated-arin-extended-latest",
-	"apnic":   "https://ftp.apnic.net/pub/stats/apnic/delegated-apnic-extended-latest",
-	"lacnic":  "https://ftp.lacnic.net/pub/stats/lacnic/delegated-lacnic-extended-latest",
-	"afrinic": "https://ftp.afrinic.net/pub/stats/afrinic/delegated-afrinic-extended-latest",
-}
 
 type rangeEntry struct {
 	start uint32
 	count uint32
 }
 
-func fetch(url string) (io.ReadCloser, error) {
+// fetchASNPrefixes fetches IPv4 prefixes for a given ASN from bgp.tools
+func fetchASNPrefixes(asn string) ([]rangeEntry, error) {
+	url := fmt.Sprintf("https://bgp.tools/table.txt?asn=%s", asn)
 	client := &http.Client{Timeout: 90 * time.Second}
 	req, _ := http.NewRequest("GET", url, nil)
-	req.Header.Set("User-Agent", "olc-cccidrs/1.0")
+	req.Header.Set("User-Agent", "olc-asncidrs/1.0")
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		resp.Body.Close()
 		return nil, fmt.Errorf("status %d", resp.StatusCode)
 	}
-	return resp.Body, nil
-}
 
-func parseDelegated(r io.Reader, want map[string]bool, out map[string][]rangeEntry) error {
-	scanner := bufio.NewScanner(r)
-	scanner.Buffer(make([]byte, 1<<16), 1<<20)
+	var entries []rangeEntry
+	scanner := bufio.NewScanner(resp.Body)
 	for scanner.Scan() {
-		line := scanner.Text()
+		line := strings.TrimSpace(scanner.Text())
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
-		fields := strings.Split(line, "|")
-		if len(fields) < 7 {
+		// Skip IPv6 prefixes
+		if strings.Contains(line, ":") {
 			continue
 		}
-		// registry|cc|type|start|value|date|status|...
-		if fields[2] != "ipv4" {
+		_, ipnet, err := net.ParseCIDR(line)
+		if err != nil {
 			continue
 		}
-		cc := fields[1]
-		if !want[cc] {
-			continue
-		}
-		ip := net.ParseIP(fields[3])
-		if ip == nil {
-			continue
-		}
-		ip4 := ip.To4()
+		ip4 := ipnet.IP.To4()
 		if ip4 == nil {
 			continue
 		}
-		count, err := strconv.ParseUint(fields[4], 10, 32)
-		if err != nil || count == 0 {
-			continue
-		}
-		out[cc] = append(out[cc], rangeEntry{
+		ones, _ := ipnet.Mask.Size()
+		count := uint32(1) << (32 - ones)
+		entries = append(entries, rangeEntry{
 			start: binary.BigEndian.Uint32(ip4),
-			count: uint32(count),
+			count: count,
 		})
 	}
-	return scanner.Err()
+	return entries, scanner.Err()
 }
 
 // rangeToCIDRs converts (start, count) where count is arbitrary to a list of CIDRs.
@@ -127,8 +104,13 @@ func mergeAndSort(entries []rangeEntry) []rangeEntry {
 			continue
 		}
 		last := &merged[len(merged)-1]
-		if last.start+last.count == e.start {
-			last.count += e.count
+		lastEnd := last.start + last.count
+		eEnd := e.start + e.count
+		if lastEnd >= e.start {
+			// Overlapping or adjacent — merge
+			if eEnd > lastEnd {
+				last.count = eEnd - last.start
+			}
 		} else {
 			merged = append(merged, e)
 		}
@@ -155,22 +137,28 @@ func writeCIDRs(path string, entries []rangeEntry) (int, error) {
 }
 
 func main() {
-	ccsFlag := flag.String("cc", "RU,BY,KZ,AM,KG,UZ,TJ,AZ,MD",
-		"comma-separated country codes (default: RU + CIS/EAEU set)")
+	asnsFlag := flag.String("asn", "",
+		"comma-separated ASN numbers (e.g., AS12345,AS67890 or 12345,67890)")
 	outDir := flag.String("out", "scan/data", "output directory")
+	combined := flag.Bool("combined", false, "write all ASNs to a single combined.txt file")
 	flag.Parse()
 
-	want := map[string]bool{}
-	var ccList []string
-	for _, cc := range strings.Split(*ccsFlag, ",") {
-		cc = strings.ToUpper(strings.TrimSpace(cc))
-		if cc != "" {
-			want[cc] = true
-			ccList = append(ccList, cc)
-		}
+	if *asnsFlag == "" {
+		fmt.Fprintln(os.Stderr, "usage: cccidrs -asn AS12345,AS67890 [-out dir] [-combined]")
+		os.Exit(1)
 	}
-	if len(want) == 0 {
-		fmt.Fprintln(os.Stderr, "no country codes")
+
+	var asnList []string
+	for _, asn := range strings.Split(*asnsFlag, ",") {
+		asn = strings.ToUpper(strings.TrimSpace(asn))
+		if asn == "" {
+			continue
+		}
+		// Normalize: remove "AS" prefix if present for the API call
+		asnList = append(asnList, asn)
+	}
+	if len(asnList) == 0 {
+		fmt.Fprintln(os.Stderr, "no ASNs provided")
 		os.Exit(1)
 	}
 
@@ -180,38 +168,57 @@ func main() {
 	}
 
 	collected := map[string][]rangeEntry{}
+	var allEntries []rangeEntry
 
-	for name, url := range rirSources {
-		fmt.Printf("fetching %s...\n", name)
-		body, err := fetch(url)
+	for _, asn := range asnList {
+		// Normalize ASN for API (remove AS prefix if present)
+		asnNum := strings.TrimPrefix(asn, "AS")
+		fmt.Printf("fetching %s...\n", asn)
+		entries, err := fetchASNPrefixes(asnNum)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "  %s: %v (skipped)\n", name, err)
+			fmt.Fprintf(os.Stderr, "  %s: %v (skipped)\n", asn, err)
 			continue
 		}
-		err = parseDelegated(body, want, collected)
-		body.Close()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "  %s: parse: %v\n", name, err)
-		}
+		collected[asn] = entries
+		allEntries = append(allEntries, entries...)
+		fmt.Printf("  %s: fetched %d prefixes\n", asn, len(entries))
 	}
 
-	sort.Strings(ccList)
-	totalCIDRs := 0
-	for _, cc := range ccList {
-		entries := mergeAndSort(collected[cc])
-		fname := filepath.Join(*outDir, strings.ToLower(cc)+"ranges4.txt")
+	if *combined {
+		// Write all ASNs to a single file
+		entries := mergeAndSort(allEntries)
+		fname := filepath.Join(*outDir, "combined.txt")
 		n, err := writeCIDRs(fname, entries)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "%s: write: %v\n", cc, err)
-			continue
+			fmt.Fprintf(os.Stderr, "combined: write: %v\n", err)
+			os.Exit(1)
 		}
 		var totalIPs uint64
 		for _, e := range entries {
 			totalIPs += uint64(e.count)
 		}
-		fmt.Printf("%s: %d ranges, %d CIDRs, %d IPs -> %s\n",
-			cc, len(entries), n, totalIPs, fname)
-		totalCIDRs += n
+		fmt.Printf("combined: %d ranges, %d CIDRs, %d IPs -> %s\n",
+			len(entries), n, totalIPs, fname)
+	} else {
+		// Write each ASN to its own file
+		totalCIDRs := 0
+		for _, asn := range asnList {
+			entries := mergeAndSort(collected[asn])
+			asnLower := strings.ToLower(strings.TrimPrefix(asn, "AS"))
+			fname := filepath.Join(*outDir, "as"+asnLower+".txt")
+			n, err := writeCIDRs(fname, entries)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "%s: write: %v\n", asn, err)
+				continue
+			}
+			var totalIPs uint64
+			for _, e := range entries {
+				totalIPs += uint64(e.count)
+			}
+			fmt.Printf("%s: %d ranges, %d CIDRs, %d IPs -> %s\n",
+				asn, len(entries), n, totalIPs, fname)
+			totalCIDRs += n
+		}
+		fmt.Printf("total CIDRs written: %d\n", totalCIDRs)
 	}
-	fmt.Printf("total CIDRs written: %d\n", totalCIDRs)
 }
