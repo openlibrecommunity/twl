@@ -36,7 +36,7 @@ func main() {
 	if len(os.Args) < 2 {
 		fmt.Fprintf(os.Stderr, "Usage: %s <whitelist_ips.txt> [wl_interface] [direct_interface]\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  Single interface: %s ips.txt\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  Compare mode:     %s ips.txt wlan0 tun0\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  Compare mode:     %s ips.txt enp0s20u5 enp7s0\n", os.Args[0])
 		os.Exit(1)
 	}
 

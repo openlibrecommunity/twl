@@ -3,7 +3,7 @@
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BASE_DIR="$(dirname "$SCRIPT_DIR")"
 
-IFACE="wlan0"
+IFACE="enp0s20u5"
 RANGES="$BASE_DIR/data/ruranges4.txt"
 OUTPUT="$BASE_DIR/out/whitelist_ips.txt"
 RATE=10000

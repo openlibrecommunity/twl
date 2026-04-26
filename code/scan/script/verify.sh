@@ -4,7 +4,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BASE_DIR="$(dirname "$SCRIPT_DIR")"
 VERIFY_DIR="$BASE_DIR/out/verify"
 
-IFACE="${1:-wlan0}"
+IFACE="${1:-enp0s20u5}"
 INPUT="$VERIFY_DIR/input.txt"
 NMAP_OUT="$VERIFY_DIR/nmap.txt"
 VERIFIED="$VERIFY_DIR/verified.txt"

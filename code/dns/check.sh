@@ -1,6 +1,6 @@
 #!/bin/bash
 
-IFACE="wlan0"
+IFACE="enp0s20u5"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 OUT="$SCRIPT_DIR/out/dns_results.txt"
 
