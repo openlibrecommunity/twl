@@ -3,10 +3,10 @@
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BASE_DIR="$(dirname "$SCRIPT_DIR")"
 
-IFACE="enp0s20u5"
+IFACE="enp7s0"
 RANGES="$BASE_DIR/data/ruranges4.txt"
 OUTPUT="$BASE_DIR/out/whitelist_ips.txt"
-RATE=10000
+RATE=100000
 
 if [ ! -f "$RANGES" ]; then
     echo "Error: $RANGES not found"
