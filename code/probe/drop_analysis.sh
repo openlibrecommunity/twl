@@ -1,6 +1,6 @@
 #!/bin/bash
 
-IFACE="enp0s20u5"
+IFACE="enp0s20u1"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 OUT="$SCRIPT_DIR/out/drop_analysis.txt"
 

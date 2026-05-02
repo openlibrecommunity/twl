@@ -5,15 +5,15 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 MODE=""
-WL_IFACE="enp0s20u5"
+WL_IFACE="enp0s20u1"
 DIRECT_IFACE="enp7s0"
 
 if [ "$1" = "all" ]; then
     MODE="all"
-    WL_IFACE="${2:-enp0s20u5}"
+    WL_IFACE="${2:-enp0s20u1}"
     DIRECT_IFACE="${3:-enp7s0}"
 else
-    WL_IFACE="${1:-enp0s20u5}"
+    WL_IFACE="${1:-enp0s20u1}"
     DIRECT_IFACE="${2:-enp7s0}"
 fi
 

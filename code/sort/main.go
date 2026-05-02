@@ -22,7 +22,7 @@ const (
 	ProxyAddr   = "127.0.0.1:8888"
 	WLFile      = "out/beget_up.txt"
 	SubnetsFile = "selectel_up.tx"
-	Interface   = "enp0s20u5"
+	Interface   = "enp0s20u1"
 )
 
 type ScanResult struct {

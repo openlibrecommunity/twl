@@ -37,7 +37,7 @@ var whitelistSNIs = []string{
 }
 
 func main() {
-	iface := "enp0s20u5"
+	iface := "enp0s20u1"
 	if len(os.Args) > 1 {
 		iface = os.Args[1]
 	}
