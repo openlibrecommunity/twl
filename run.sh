@@ -110,7 +110,7 @@ go run sni/main.go "$WHITELIST" "$WL_IFACE" "$DIRECT_IFACE" > sni/out/domains.js
 echo "  -> sni/out/domains.json"
 
 echo "[6/7] Running SNI blocking test..."
-go run sni/snicheck.go "$WL_IFACE" > sni/out/snicheck.json
+go run sni/snicheck/main.go "$WL_IFACE" > sni/out/snicheck.json
 echo "  -> sni/out/snicheck.json"
 
 echo "[7/7] Running probe..."
