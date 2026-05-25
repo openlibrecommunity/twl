@@ -1,0 +1,1 @@
+httpx-toolkit -l code/scan/out/whitelist_ips.txt -store-response -store-response-dir ./responses -status-code -tech-detect -title -web-server -ip -cname -asn -cdn -tls-grab -response-time -method -websocket -json -o results.json
