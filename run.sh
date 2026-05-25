@@ -52,7 +52,7 @@ if [ "$MODE" = "all" ]; then
     echo "  Ranges: $RANGE_COUNT subnets"
     echo "  Rate: $PPS pps"
     echo "  Output: $WHITELIST"
-    sudo masscan --adapter "$WL_IFACE" -p443 -iL "$RANGES" --rate $PPS -oL "$WHITELIST" --retries 3
+    sudo masscan --adapter "$WL_IFACE" -p443 -iL "$RANGES" --rate $PPS -oL "$WHITELIST" --retries 3 --resume paused.conf
     echo ""
 fi
 
