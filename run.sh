@@ -21,7 +21,7 @@ WHITELIST="$SCRIPT_DIR/code/scan/out/whitelist_ips.txt"
 VERIFIED="$SCRIPT_DIR/code/scan/out/verify/verified.txt"
 MMDB="$SCRIPT_DIR/code/sort/data/geo.mmdb"
 RANGES="$SCRIPT_DIR/code/scan/data/ruranges4.txt"
-PPS=1000
+PPS=2000
 
 # === FULL SCAN MODE ===
 if [ "$MODE" = "all" ]; then
