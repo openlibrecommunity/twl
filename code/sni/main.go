@@ -32,21 +32,29 @@ type CompareResult struct {
 	ErrorDirect string   `json:"error_direct,omitempty"`
 }
 
+const (
+	workers = 500
+	timeout = 3 * time.Second
+)
+
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintf(os.Stderr, "Usage: %s <whitelist_ips.txt> [wl_interface] [direct_interface]\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  Single interface: %s ips.txt\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  Compare mode:     %s ips.txt enp0s20u1 enp7s0\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Usage: %s <ips.txt> [wl_iface] [direct_iface]\n", os.Args[0])
 		os.Exit(1)
 	}
 
-	file, err := os.Open(os.Args[1])
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to open input: %v\n", err)
-		os.Exit(1)
+	ips := loadIPs(os.Args[1])
+
+	if len(os.Args) >= 4 {
+		runCompareMode(ips, os.Args[2], os.Args[3])
+	} else {
+		runSingleMode(ips, "")
 	}
+}
+
+func loadIPs(path string) []string {
+	file, _ := os.Open(path)
 	defer file.Close()
-
 	var ips []string
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
@@ -59,47 +67,38 @@ func main() {
 			ips = append(ips, parts[3])
 		}
 	}
-
-	if len(os.Args) >= 4 {
-		wlIface := os.Args[2]
-		directIface := os.Args[3]
-		runCompareMode(ips, wlIface, directIface)
-	} else {
-		runSingleMode(ips, "")
-	}
+	return ips
 }
 
 func runSingleMode(ips []string, iface string) {
-	fmt.Fprintf(os.Stderr, "Checking %d IPs...\n", len(ips))
-
-	results := checkAllIPs(ips, iface)
-
+	fmt.Fprintf(os.Stderr, "Checking %d IPs (%d workers)...\n", len(ips), workers)
+	localIP := resolveIface(iface)
+	results := checkAllIPs(ips, localIP)
 	output, _ := json.MarshalIndent(results, "", "  ")
 	fmt.Println(string(output))
 }
 
 func runCompareMode(ips []string, wlIface, directIface string) {
-	fmt.Fprintf(os.Stderr, "Compare mode: %d IPs\n", len(ips))
-	fmt.Fprintf(os.Stderr, "  Whitelist interface: %s\n", wlIface)
-	fmt.Fprintf(os.Stderr, "  Direct interface:    %s\n", directIface)
-	fmt.Fprintf(os.Stderr, "\n")
+	fmt.Fprintf(os.Stderr, "Compare mode: %d IPs (%d workers)\n", len(ips), workers)
 
-	fmt.Fprintf(os.Stderr, "[1/2] Checking via %s (whitelist)...\n", wlIface)
-	wlResults := checkAllIPs(ips, wlIface)
-	wlMap := make(map[string]HostInfo)
+	wlIP := resolveIface(wlIface)
+	directIP := resolveIface(directIface)
+
+	fmt.Fprintf(os.Stderr, "[1/2] Checking via %s...\n", wlIface)
+	wlResults := checkAllIPs(ips, wlIP)
+	wlMap := make(map[string]HostInfo, len(wlResults))
 	for _, r := range wlResults {
 		wlMap[r.IP] = r
 	}
 
-	fmt.Fprintf(os.Stderr, "[2/2] Checking via %s (direct)...\n", directIface)
-	directResults := checkAllIPs(ips, directIface)
+	fmt.Fprintf(os.Stderr, "[2/2] Checking via %s...\n", directIface)
+	directResults := checkAllIPs(ips, directIP)
 
 	var compared []CompareResult
 	var blockedCount int
 
 	for _, direct := range directResults {
 		wl := wlMap[direct.IP]
-
 		result := CompareResult{
 			IP:          direct.IP,
 			CN:          direct.CN,
@@ -109,62 +108,46 @@ func runCompareMode(ips []string, wlIface, directIface string) {
 			ErrorDirect: direct.Error,
 			ErrorWL:     wl.Error,
 		}
-
-		// Blocked = works via direct but fails via whitelist interface
 		if direct.Error == "" && wl.Error != "" {
 			result.Blocked = true
 			blockedCount++
 		}
-
 		compared = append(compared, result)
 	}
 
-	fmt.Fprintf(os.Stderr, "\nResults: %d total, %d blocked via %s\n", len(compared), blockedCount, wlIface)
-
+	fmt.Fprintf(os.Stderr, "\nResults: %d total, %d blocked\n", len(compared), blockedCount)
 	output, _ := json.MarshalIndent(compared, "", "  ")
 	fmt.Println(string(output))
 }
 
-func checkAllIPs(ips []string, iface string) []HostInfo {
-	workers := 100
-	timeout := 5 * time.Second
-	jobs := make(chan string, 1000)
-	results := make(chan HostInfo, 1000)
-
+func checkAllIPs(ips []string, localIP string) []HostInfo {
+	jobs := make(chan string, workers*2)
+	results := make([]HostInfo, len(ips))
 	var wg sync.WaitGroup
 	var checked uint64
+	total := uint64(len(ips))
 
 	for i := 0; i < workers; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			for ip := range jobs {
-				info := checkTLS(ip, iface, timeout)
-				atomic.AddUint64(&checked, 1)
-				results <- info
+				idx := atomic.AddUint64(&checked, 1) - 1
+				results[idx] = checkTLS(ip, localIP)
 			}
 		}()
 	}
 
+	// Progress reporter
 	go func() {
-		total := uint64(len(ips))
 		for {
-			time.Sleep(3 * time.Second)
+			time.Sleep(5 * time.Second)
 			c := atomic.LoadUint64(&checked)
-			fmt.Fprintf(os.Stderr, "  Progress: %d/%d (%.1f%%)\n", c, total, float64(c)/float64(total)*100)
+			fmt.Fprintf(os.Stderr, "  %d/%d (%.0f%%)\n", c, total, float64(c)/float64(total)*100)
 			if c >= total {
-				break
+				return
 			}
 		}
-	}()
-
-	var all []HostInfo
-	done := make(chan struct{})
-	go func() {
-		for info := range results {
-			all = append(all, info)
-		}
-		close(done)
 	}()
 
 	for _, ip := range ips {
@@ -172,30 +155,19 @@ func checkAllIPs(ips []string, iface string) []HostInfo {
 	}
 	close(jobs)
 	wg.Wait()
-	close(results)
-	<-done
 
-	return all
+	return results[:checked]
 }
 
-func checkTLS(ip string, iface string, timeout time.Duration) HostInfo {
+func checkTLS(ip string, localIP string) HostInfo {
 	info := HostInfo{IP: ip}
 
 	dialer := &net.Dialer{Timeout: timeout}
-
-	if iface != "" {
-		localIP := getInterfaceIP(iface)
-		if localIP != "" {
-			dialer.LocalAddr = &net.TCPAddr{IP: net.ParseIP(localIP)}
-		}
+	if localIP != "" {
+		dialer.LocalAddr = &net.TCPAddr{IP: net.ParseIP(localIP)}
 	}
 
-	conn, err := tls.DialWithDialer(
-		dialer,
-		"tcp",
-		ip+":443",
-		&tls.Config{InsecureSkipVerify: true},
-	)
+	conn, err := tls.DialWithDialer(dialer, "tcp", ip+":443", &tls.Config{InsecureSkipVerify: true})
 	if err != nil {
 		info.Error = err.Error()
 		return info
@@ -208,23 +180,21 @@ func checkTLS(ip string, iface string, timeout time.Duration) HostInfo {
 		return info
 	}
 
-	cert := certs[0]
-	info.CN = cert.Subject.CommonName
-	info.SANs = cert.DNSNames
-	info.Issuer = cert.Issuer.CommonName
-
+	info.CN = certs[0].Subject.CommonName
+	info.SANs = certs[0].DNSNames
+	info.Issuer = certs[0].Issuer.CommonName
 	return info
 }
 
-func getInterfaceIP(name string) string {
+func resolveIface(name string) string {
+	if name == "" {
+		return ""
+	}
 	iface, err := net.InterfaceByName(name)
 	if err != nil {
 		return ""
 	}
-	addrs, err := iface.Addrs()
-	if err != nil {
-		return ""
-	}
+	addrs, _ := iface.Addrs()
 	for _, addr := range addrs {
 		if ipnet, ok := addr.(*net.IPNet); ok && ipnet.IP.To4() != nil {
 			return ipnet.IP.String()

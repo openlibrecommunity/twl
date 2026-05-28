@@ -33,14 +33,11 @@ if [ "$MODE" = "all" ]; then
     echo "Started: $(date '+%Y-%m-%d %H:%M:%S')"
     echo ""
 
-    # Step 0: Masscan
-    echo "[0/7] Running masscan (port 443 scan)..."
     if [ ! -f "$RANGES" ]; then
         echo "Error: $RANGES not found"
         exit 1
     fi
 
-    # Create output directories
     mkdir -p "$SCRIPT_DIR/code/scan/out/verify"
     mkdir -p "$SCRIPT_DIR/code/sort/out"
     mkdir -p "$SCRIPT_DIR/code/subnet/out"
@@ -49,9 +46,9 @@ if [ "$MODE" = "all" ]; then
     mkdir -p "$SCRIPT_DIR/code/dns/out"
 
     RANGE_COUNT=$(wc -l < "$RANGES" | tr -d ' ')
+    echo "[0/7] Running masscan (port 443 scan)..."
     echo "  Ranges: $RANGE_COUNT subnets"
     echo "  Rate: $PPS pps"
-    echo "  Output: $WHITELIST"
     sudo masscan --adapter "$WL_IFACE" -p443 -iL "$RANGES" --rate $PPS -oL "$WHITELIST" --retries 3 --resume paused.conf
     echo ""
 fi
@@ -65,9 +62,7 @@ fi
 
 IP_COUNT=$(wc -l < "$WHITELIST" | tr -d ' ')
 VERIFIED_COUNT=0
-if [ -f "$VERIFIED" ]; then
-    VERIFIED_COUNT=$(wc -l < "$VERIFIED" | tr -d ' ')
-fi
+[ -f "$VERIFIED" ] && VERIFIED_COUNT=$(wc -l < "$VERIFIED" | tr -d ' ')
 
 echo "=== Whitelist Analysis ==="
 echo "Input: $WHITELIST ($IP_COUNT IPs)"
@@ -83,39 +78,29 @@ echo "[1/7] Deduplicating IPs..."
 bash scan/script/dedupe.sh
 echo ""
 
-echo "[2/7] Verifying with nmap..."
+echo "[2/7] Verifying with nmap + httpx-toolkit..."
 bash scan/script/verify.sh "$WL_IFACE"
 echo ""
 
 echo "[3/7] Running sort (ASN grouping)..."
 if [ -f "$MMDB" ]; then
     go run sort/main.go "$MMDB" "$WHITELIST" "$VERIFIED"
-    echo "  -> sort/out/sorted.json (raw)"
-    echo "  -> sort/out/sorted.c.json (verified)"
 else
     echo "  -> SKIP (no $MMDB)"
 fi
 
 echo "[4/7] Running subnet analysis..."
 go run subnet/main.go "$WHITELIST" > subnet/out/subnets.json
-if [ -f "$VERIFIED" ]; then
-    go run subnet/main.go "$VERIFIED" > subnet/out/subnets.c.json
-    echo "  -> subnet/out/subnets.json + subnets.c.json"
-else
-    echo "  -> subnet/out/subnets.json"
-fi
+[ -f "$VERIFIED" ] && go run subnet/main.go "$VERIFIED" > subnet/out/subnets.c.json
 
 echo "[5/7] Running SNI check (compare mode)..."
 go run sni/main.go "$WHITELIST" "$WL_IFACE" "$DIRECT_IFACE" > sni/out/domains.json
-echo "  -> sni/out/domains.json"
 
 echo "[6/7] Running SNI blocking test..."
 go run sni/snicheck/main.go "$WL_IFACE" > sni/out/snicheck.json
-echo "  -> sni/out/snicheck.json"
 
 echo "[7/7] Running probe..."
 go run probe/main.go "$WHITELIST" "$WL_IFACE"
-echo "  -> probe/out/probe_results.json"
 
 cd "$SCRIPT_DIR"
 
