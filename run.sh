@@ -5,15 +5,15 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 MODE=""
-WL_IFACE="enp0s20u1"
+WL_IFACE="enp0s20u9"
 DIRECT_IFACE="enp7s0"
 
 if [ "$1" = "all" ]; then
     MODE="all"
-    WL_IFACE="${2:-enp0s20u1}"
+    WL_IFACE="${2:-enp0s20u9}"
     DIRECT_IFACE="${3:-enp7s0}"
 else
-    WL_IFACE="${1:-enp0s20u1}"
+    WL_IFACE="${1:-enp0s20u9}"
     DIRECT_IFACE="${2:-enp7s0}"
 fi
 
@@ -21,7 +21,7 @@ WHITELIST="$SCRIPT_DIR/code/scan/out/whitelist_ips.txt"
 VERIFIED="$SCRIPT_DIR/code/scan/out/verify/verified.txt"
 MMDB="$SCRIPT_DIR/code/sort/data/geo.mmdb"
 RANGES="$SCRIPT_DIR/code/scan/data/ruranges4.txt"
-PPS=2000
+PPS=1000
 
 # === FULL SCAN MODE ===
 if [ "$MODE" = "all" ]; then

@@ -4,7 +4,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BASE_DIR="$(dirname "$SCRIPT_DIR")"
 VERIFY_DIR="$BASE_DIR/out/verify"
 
-IFACE="${1:-enp0s20u1}"
+IFACE="${1:-enp0s20u9}"
 INPUT="$VERIFY_DIR/input.txt"
 NMAP_XML="$VERIFY_DIR/nmap.xml"
 NMAP_OPEN="$VERIFY_DIR/nmap_open.txt"

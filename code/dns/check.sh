@@ -1,6 +1,6 @@
 #!/bin/bash
 
-IFACE="${1:-enp0s20u1}"
+IFACE="${1:-enp0s20u9}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 OUT="$SCRIPT_DIR/out/dns_results.txt"
 TMPFILE=$(mktemp)
