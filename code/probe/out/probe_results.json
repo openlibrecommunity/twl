@@ -1,45 +1,6 @@
 [
   {
-    "ip": "104.244.42.193",
-    "whitelist": false,
-    "tests": {
-      "icmp": "FAIL",
-      "tcp_22": "FAIL",
-      "tcp_443": "FAIL",
-      "tcp_80": "FAIL",
-      "udp_443": "NO_RESP",
-      "udp_51820": "NO_RESP",
-      "udp_53": "NO_RESP"
-    }
-  },
-  {
-    "ip": "84.201.159.242",
-    "whitelist": true,
-    "tests": {
-      "icmp": "FAIL",
-      "tcp_22": "FAIL",
-      "tcp_443": "FAIL",
-      "tcp_80": "FAIL",
-      "udp_443": "NO_RESP",
-      "udp_51820": "NO_RESP",
-      "udp_53": "NO_RESP"
-    }
-  },
-  {
-    "ip": "195.209.80.172",
-    "whitelist": true,
-    "tests": {
-      "icmp": "FAIL",
-      "tcp_22": "FAIL",
-      "tcp_443": "FAIL",
-      "tcp_80": "FAIL",
-      "udp_443": "NO_RESP",
-      "udp_51820": "NO_RESP",
-      "udp_53": "NO_RESP"
-    }
-  },
-  {
-    "ip": "77.88.55.242",
+    "ip": "78.140.234.82",
     "whitelist": true,
     "tests": {
       "icmp": "FAIL",
@@ -65,7 +26,7 @@
     }
   },
   {
-    "ip": "149.154.167.99",
+    "ip": "104.244.42.193",
     "whitelist": false,
     "tests": {
       "icmp": "FAIL",
@@ -91,7 +52,7 @@
     }
   },
   {
-    "ip": "5.35.43.130",
+    "ip": "185.72.229.118",
     "whitelist": true,
     "tests": {
       "icmp": "FAIL",
@@ -104,7 +65,46 @@
     }
   },
   {
+    "ip": "77.88.55.242",
+    "whitelist": true,
+    "tests": {
+      "icmp": "FAIL",
+      "tcp_22": "FAIL",
+      "tcp_443": "FAIL",
+      "tcp_80": "FAIL",
+      "udp_443": "NO_RESP",
+      "udp_51820": "NO_RESP",
+      "udp_53": "NO_RESP"
+    }
+  },
+  {
+    "ip": "149.154.167.99",
+    "whitelist": false,
+    "tests": {
+      "icmp": "FAIL",
+      "tcp_22": "FAIL",
+      "tcp_443": "FAIL",
+      "tcp_80": "FAIL",
+      "udp_443": "NO_RESP",
+      "udp_51820": "NO_RESP",
+      "udp_53": "NO_RESP"
+    }
+  },
+  {
     "ip": "217.20.147.1",
+    "whitelist": true,
+    "tests": {
+      "icmp": "FAIL",
+      "tcp_22": "FAIL",
+      "tcp_443": "FAIL",
+      "tcp_80": "FAIL",
+      "udp_443": "NO_RESP",
+      "udp_51820": "NO_RESP",
+      "udp_53": "NO_RESP"
+    }
+  },
+  {
+    "ip": "188.128.111.154",
     "whitelist": true,
     "tests": {
       "icmp": "FAIL",
